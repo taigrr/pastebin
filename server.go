@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 	"github.com/rcrowley/go-metrics/exp"
 	"github.com/thoas/stats"
 
-	"github.com/GeertJohan/go.rice"
+	rice "github.com/GeertJohan/go.rice"
 	"github.com/julienschmidt/httprouter"
 	"github.com/patrickmn/go-cache"
 	"github.com/renstrom/shortuuid"
@@ -160,7 +161,7 @@ func (s *Server) DownloadHandler() httprouter.Handle {
 
 		w.Header().Set("Content-Disposition", "attachment; filename="+uuid)
 		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Header().Set("Content-Length", string(content.Size()))
+		w.Header().Set("Content-Length", strconv.FormatInt(content.Size(), 10))
 
 		http.ServeContent(w, r, uuid, time.Now(), content)
 	}
