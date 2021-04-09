@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -23,7 +22,6 @@ import (
 	rice "github.com/GeertJohan/go.rice"
 	"github.com/julienschmidt/httprouter"
 	"github.com/patrickmn/go-cache"
-	"github.com/renstrom/shortuuid"
 	"github.com/timewasted/go-accept-headers"
 )
 
@@ -117,20 +115,15 @@ func (s *Server) PasteHandler() httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		s.counters.Inc("n_paste")
 
-		body, err := ioutil.ReadAll(r.Body)
-		log.Printf("body: %v", body)
-		if err != nil {
-			http.Error(w, "Internal Error", http.StatusInternalServerError)
-			return
-		}
+		blob := r.FormValue("blob")
 
-		if len(body) == 0 {
+		if len(blob) == 0 {
 			http.Error(w, "Bad Request", http.StatusBadRequest)
 			return
 		}
 
-		uuid := shortuuid.NewWithNamespace(s.config.fqdn)
-		s.store.Set(uuid, string(body), cache.DefaultExpiration)
+		uuid := RandomString(8)
+		s.store.Set(uuid, blob, cache.DefaultExpiration)
 
 		u, err := url.Parse(fmt.Sprintf("./p/%s", uuid))
 		if err != nil {
