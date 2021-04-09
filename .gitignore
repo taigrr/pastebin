@@ -2,5 +2,6 @@
 *.bak
 
 /pb
+/cmd/pb/pb
 /pastebin
 /coverage.txt
