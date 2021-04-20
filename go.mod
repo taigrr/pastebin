@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/GeertJohan/go.rice v1.0.2
 	github.com/julienschmidt/httprouter v1.3.0
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/namsral/flag v1.7.4-pre
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
