@@ -295,7 +295,7 @@ func (s *Server) initRoutes() {
 	s.router.DELETE("/p/:uuid", s.DeleteHandler())
 	// Add alternate path since form actions don't support method=DELETE
 	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE
-	s.router.POST("/p/:uuid/delete", s.DeleteHandler())
+	s.router.POST("/delete/:uuid", s.DeleteHandler())
 }
 
 // NewServer ...
