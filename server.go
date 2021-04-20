@@ -115,6 +115,15 @@ func (s *Server) PasteHandler() httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		s.counters.Inc("n_paste")
 
+		accepts, err := accept.Negotiate(
+			r.Header.Get("Accept"), AcceptedTypes...,
+		)
+		if err != nil {
+			log.Printf("error negotiating: %s", err)
+			http.Error(w, "Internal Error", http.StatusInternalServerError)
+			return
+		}
+
 		blob := r.FormValue("blob")
 
 		if len(blob) == 0 {
@@ -129,7 +138,14 @@ func (s *Server) PasteHandler() httprouter.Handle {
 		if err != nil {
 			http.Error(w, "Internal Error", http.StatusInternalServerError)
 		}
-		http.Redirect(w, r, r.URL.ResolveReference(u).String(), http.StatusFound)
+		switch accepts {
+		case "text/html":
+			http.Redirect(w, r, r.URL.ResolveReference(u).String(), http.StatusFound)
+		case "text/plain":
+			fallthrough
+		default:
+			w.Write([]byte(r.Host + r.URL.ResolveReference(u).String()))
+		}
 	}
 }
 
@@ -157,6 +173,35 @@ func (s *Server) DownloadHandler() httprouter.Handle {
 		w.Header().Set("Content-Length", strconv.FormatInt(content.Size(), 10))
 
 		http.ServeContent(w, r, uuid, time.Now(), content)
+	}
+}
+
+// DeleteHandler
+func (s *Server) DeleteHandler() httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		s.counters.Inc("n_delete")
+		_, err := accept.Negotiate(
+			r.Header.Get("Accept"), AcceptedTypes...,
+		)
+		if err != nil {
+			log.Printf("error negotiating: %s", err)
+			http.Error(w, "Internal Error", http.StatusInternalServerError)
+			return
+		}
+
+		uuid := p.ByName("uuid")
+		if uuid == "" {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+
+		_, ok := s.store.Get(uuid)
+		if !ok {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		s.store.Delete(uuid)
+		http.Error(w, "Deleted", http.StatusOK)
 	}
 }
 
@@ -202,7 +247,7 @@ func (s *Server) ViewHandler() httprouter.Handle {
 				},
 			)
 		case "text/plain":
-			w.Write([]byte(blob))
+			fallthrough
 		default:
 			w.Write([]byte(blob))
 		}
@@ -246,6 +291,11 @@ func (s *Server) initRoutes() {
 	s.router.POST("/", s.PasteHandler())
 	s.router.GET("/download/:uuid", s.DownloadHandler())
 	s.router.GET("/p/:uuid", s.ViewHandler())
+	// Enable DELETE from curl/wget/cli
+	s.router.DELETE("/p/:uuid", s.DeleteHandler())
+	// Add alternate path since form actions don't support method=DELETE
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE
+	s.router.POST("/p/:uuid/delete", s.DeleteHandler())
 }
 
 // NewServer ...

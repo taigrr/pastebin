@@ -37,7 +37,7 @@ Or use the Web UI: http://localhost:8000/
 Or curl:
 
 ```#bash
-$ echo "hello World" | curl -q -L -d @- -o - http://localhost:8000/
+$ echo "Hello World" | curl -q -L --form blob='<-' -o - http://localhost:8000/
 ...
 ```
 
