@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -10,8 +11,10 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -39,6 +42,11 @@ const (
 
 	// maxPasteSize limits the maximum size of a paste body (1 MB).
 	maxPasteSize = 1 << 20
+
+	// shutdownTimeout is the maximum time to wait for in-flight requests during shutdown.
+	shutdownTimeout = 10 * time.Second
+
+	statusHealthy = "healthy"
 )
 
 // Server holds the pastebin HTTP server state.
@@ -65,9 +73,31 @@ func NewServer(config Config) *Server {
 }
 
 // ListenAndServe starts the HTTP server on the configured bind address.
+// It handles graceful shutdown on SIGINT and SIGTERM.
 func (s *Server) ListenAndServe() error {
-	log.Printf("pastebin listening on %s", s.config.Bind)
-	return http.ListenAndServe(s.config.Bind, s.mux)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	server := &http.Server{
+		Addr:    s.config.Bind,
+		Handler: s.mux,
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		log.Printf("pastebin listening on %s", s.config.Bind)
+		errChan <- server.ListenAndServe()
+	}()
+
+	select {
+	case err := <-errChan:
+		return err
+	case <-ctx.Done():
+		log.Println("shutting down gracefully...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		return server.Shutdown(shutdownCtx)
+	}
 }
 
 func (s *Server) initRoutes() {
@@ -84,6 +114,7 @@ func (s *Server) initRoutes() {
 	s.mux.HandleFunc("POST /delete/{uuid}", s.handleDelete)
 	s.mux.HandleFunc("GET /download/{uuid}", s.handleDownload)
 	s.mux.HandleFunc("GET /debug/stats", s.handleStats)
+	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
 }
 
 func (s *Server) renderTemplate(name string, w http.ResponseWriter, data any) {
@@ -246,5 +277,14 @@ func (s *Server) handleStats(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set(headerContentType, contentTypeJSON)
 	if err := json.NewEncoder(w).Encode(stats); err != nil {
 		log.Printf("error encoding stats: %v", err)
+	}
+}
+
+func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set(headerContentType, contentTypeJSON)
+	if err := json.NewEncoder(w).Encode(struct {
+		Status string `json:"status"`
+	}{Status: statusHealthy}); err != nil {
+		log.Printf("error encoding health response: %v", err)
 	}
 }

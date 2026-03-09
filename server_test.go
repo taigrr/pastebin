@@ -353,6 +353,19 @@ func TestPasteRoundTripSpecialChars(t *testing.T) {
 	assert.Equal(t, specialContent, viewRec.Body.String())
 }
 
+func TestHealthzHandler(t *testing.T) {
+	server := newTestServer()
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	rec := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Header().Get("Content-Type"), "application/json")
+	assert.Contains(t, rec.Body.String(), `"status":"healthy"`)
+}
+
 func TestViewWithTabs(t *testing.T) {
 	server := newTestServer()
 
