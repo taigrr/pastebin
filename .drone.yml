@@ -3,23 +3,14 @@ name: default
 
 steps:
   - name: build
-    image: golang:latest
+    image: golang:1.26
     commands:
-      - make test
-      - make install
+      - go build ./...
+      - go vet ./...
+      - go test -v -cover -coverprofile=coverage.txt -covermode=atomic -coverpkg=./... -race ./...
 
   - name: coverage
     image: plugins/codecov
     settings:
       token:
         from_secret: codecov-token
-
-  - name: notify
-    image: plugins/webhook
-    settings:
-      urls:
-        - https://msgbus.mills.io/ci.mills.io
-    when:
-      status:
-        - success
-        - failure
