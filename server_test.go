@@ -226,6 +226,133 @@ func TestPasteOversized(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
+func TestViewHTMLRender(t *testing.T) {
+	server := newTestServer()
+
+	server.store.Set("htmlview", "rendered content", 0)
+
+	req := httptest.NewRequest(http.MethodGet, "/p/htmlview", nil)
+	req.Header.Set("Accept", "text/html")
+	rec := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
+	assert.Contains(t, rec.Body.String(), "rendered content")
+	assert.Contains(t, rec.Body.String(), "htmlview")
+}
+
+func TestStatsEmptyStore(t *testing.T) {
+	server := newTestServer()
+
+	req := httptest.NewRequest(http.MethodGet, "/debug/stats", nil)
+	rec := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"item_count":0`)
+}
+
+func TestStatsMultipleItems(t *testing.T) {
+	server := newTestServer()
+
+	server.store.Set("a", "1", 0)
+	server.store.Set("b", "2", 0)
+	server.store.Set("c", "3", 0)
+
+	req := httptest.NewRequest(http.MethodGet, "/debug/stats", nil)
+	rec := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), `"item_count":3`)
+}
+
+func TestPasteNoFormField(t *testing.T) {
+	server := newTestServer()
+
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestDeleteResponseBody(t *testing.T) {
+	server := newTestServer()
+
+	server.store.Set("delresp", "content", 0)
+
+	req := httptest.NewRequest(http.MethodDelete, "/p/delresp", nil)
+	rec := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "Deleted", rec.Body.String())
+}
+
+func TestDownloadContentHeaders(t *testing.T) {
+	server := newTestServer()
+
+	server.store.Set("dlheader", "file content here", 0)
+
+	req := httptest.NewRequest(http.MethodGet, "/download/dlheader", nil)
+	rec := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "attachment; filename=dlheader", rec.Header().Get("Content-Disposition"))
+}
+
+func TestNegotiateContentTypeDefault(t *testing.T) {
+	server := newTestServer()
+
+	// No Accept header defaults to plain text
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, rec.Body.String(), "pastebin service")
+}
+
+func TestPasteRoundTripSpecialChars(t *testing.T) {
+	server := newTestServer()
+
+	specialContent := "line1\nline2\n<script>alert('xss')</script>\n日本語テスト"
+
+	formData := url.Values{}
+	formData.Set("blob", specialContent)
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(formData.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "text/plain")
+	rec := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	parts := strings.Split(rec.Body.String(), "/p/")
+	require.Len(t, parts, 2)
+	pasteID := parts[1]
+
+	viewReq := httptest.NewRequest(http.MethodGet, "/p/"+pasteID, nil)
+	viewReq.Header.Set("Accept", "text/plain")
+	viewRec := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(viewRec, viewReq)
+
+	assert.Equal(t, http.StatusOK, viewRec.Code)
+	assert.Equal(t, specialContent, viewRec.Body.String())
+}
+
 func TestViewWithTabs(t *testing.T) {
 	server := newTestServer()
 

@@ -22,3 +22,17 @@ func TestRandomStringUniqueness(t *testing.T) {
 		seen[result] = true
 	}
 }
+
+func TestRandomStringURLSafe(t *testing.T) {
+	for range 50 {
+		result := RandomString(32)
+		// base64 URL encoding uses A-Z, a-z, 0-9, -, _
+		for _, char := range result {
+			isValid := (char >= 'A' && char <= 'Z') ||
+				(char >= 'a' && char <= 'z') ||
+				(char >= '0' && char <= '9') ||
+				char == '-' || char == '_' || char == '='
+			assert.True(t, isValid, "RandomString contains invalid URL character: %c", char)
+		}
+	}
+}
