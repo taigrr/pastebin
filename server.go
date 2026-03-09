@@ -112,18 +112,18 @@ func (s *Server) initRoutes() {
 
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
 	s.mux.HandleFunc("POST /{$}", s.handlePaste)
-	s.mux.HandleFunc("GET /p/{uuid}", s.handleView)
-	s.mux.HandleFunc("DELETE /p/{uuid}", s.handleDelete)
-	s.mux.HandleFunc("POST /delete/{uuid}", s.handleDelete)
-	s.mux.HandleFunc("GET /download/{uuid}", s.handleDownload)
+	s.mux.HandleFunc("GET /p/{id}", s.handleView)
+	s.mux.HandleFunc("DELETE /p/{id}", s.handleDelete)
+	s.mux.HandleFunc("POST /delete/{id}", s.handleDelete)
+	s.mux.HandleFunc("GET /download/{id}", s.handleDownload)
 	s.mux.HandleFunc("GET /debug/stats", s.handleStats)
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
 }
 
 // templateData holds data passed to HTML templates.
 type templateData struct {
-	Blob string
-	UUID string
+	Blob    string
+	PasteID string
 }
 
 func (s *Server) renderTemplate(name string, w http.ResponseWriter, data *templateData) {
@@ -198,7 +198,7 @@ func (s *Server) handlePaste(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleView(w http.ResponseWriter, r *http.Request) {
-	pasteID := r.PathValue("uuid")
+	pasteID := r.PathValue("id")
 	if pasteID == "" {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
@@ -222,8 +222,8 @@ func (s *Server) handleView(w http.ResponseWriter, r *http.Request) {
 	switch contentType {
 	case contentTypeHTML:
 		s.renderTemplate("base", w, &templateData{
-			Blob: blob,
-			UUID: pasteID,
+			Blob:    blob,
+			PasteID: pasteID,
 		})
 	default:
 		w.Header().Set(headerContentType, contentTypePlain)
@@ -232,7 +232,7 @@ func (s *Server) handleView(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
-	pasteID := r.PathValue("uuid")
+	pasteID := r.PathValue("id")
 	if pasteID == "" {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
@@ -250,7 +250,7 @@ func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
-	pasteID := r.PathValue("uuid")
+	pasteID := r.PathValue("id")
 	if pasteID == "" {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return

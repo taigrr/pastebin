@@ -7,7 +7,7 @@
     <div class="column col-3">
       <div class="dropdown">
         <div class="btn-group">
-          <a class="btn btn-sm btn-primary" href="/download/{{.UUID}}">
+          <a class="btn btn-sm btn-primary" href="/download/{{.PasteID}}">
             <i class="icon icon-download"></i>
             Download
           </a>
@@ -16,7 +16,7 @@
           </a>
           <ul class="menu">
             <li class="menu-item">
-              <form action="/delete/{{.UUID}}" method="POST">
+              <form action="/delete/{{.PasteID}}" method="POST">
                 <button type="submit">
                   <span href="#dropdowns">
                     <i class="icon icon-delete"></i>
