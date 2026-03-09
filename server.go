@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -35,6 +36,9 @@ const (
 	formFieldBlob = "blob"
 
 	pasteIDLength = 8
+
+	// maxPasteSize limits the maximum size of a paste body (1 MB).
+	maxPasteSize = 1 << 20
 )
 
 // Server holds the pastebin HTTP server state.
@@ -83,11 +87,14 @@ func (s *Server) initRoutes() {
 }
 
 func (s *Server) renderTemplate(name string, w http.ResponseWriter, data any) {
-	err := s.templates.ExecuteTemplate(w, name, data)
-	if err != nil {
+	var buf strings.Builder
+	if err := s.templates.ExecuteTemplate(&buf, name, data); err != nil {
 		log.Printf("error executing template %s: %v", name, err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
+	w.Header().Set(headerContentType, contentTypeHTML+"; charset=utf-8")
+	_, _ = io.WriteString(w, buf.String())
 }
 
 func negotiateContentType(r *http.Request) string {
@@ -110,6 +117,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePaste(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxPasteSize)
+
 	blob := r.FormValue(formFieldBlob)
 	if len(blob) == 0 {
 		http.Error(w, "Bad Request: empty paste", http.StatusBadRequest)
@@ -117,6 +126,14 @@ func (s *Server) handlePaste(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pasteID := RandomString(pasteIDLength)
+
+	// Retry on the extremely unlikely collision.
+	for retries := 0; retries < 3; retries++ {
+		if _, found := s.store.Get(pasteID); !found {
+			break
+		}
+		pasteID = RandomString(pasteIDLength)
+	}
 	s.store.Set(pasteID, blob, cache.DefaultExpiration)
 
 	pastePath, err := url.Parse(fmt.Sprintf("./p/%s", pasteID))

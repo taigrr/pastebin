@@ -210,6 +210,22 @@ func TestStatsHandler(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "item_count")
 }
 
+func TestPasteOversized(t *testing.T) {
+	server := newTestServer()
+
+	// Create a paste larger than maxPasteSize (1 MB)
+	largeBlob := strings.Repeat("x", maxPasteSize+1)
+	formData := url.Values{}
+	formData.Set("blob", largeBlob)
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(formData.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	server.mux.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
 func TestViewWithTabs(t *testing.T) {
 	server := newTestServer()
 
