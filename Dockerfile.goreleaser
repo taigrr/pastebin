@@ -1,0 +1,7 @@
+FROM alpine
+
+EXPOSE 8000/tcp
+ENTRYPOINT ["pastebin"]
+
+COPY pastebin /bin/pastebin
+COPY pb /bin/pb

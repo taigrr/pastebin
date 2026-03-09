@@ -1,0 +1,115 @@
+version: 2
+
+builds:
+  - id: pastebin
+    main: .
+    binary: pastebin
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    goos:
+      - linux
+      - darwin
+      - windows
+      - freebsd
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+      - goos: freebsd
+        goarch: arm64
+
+  - id: pb
+    main: ./cmd/pb
+    binary: pb
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    goos:
+      - linux
+      - darwin
+      - windows
+      - freebsd
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+      - goos: freebsd
+        goarch: arm64
+
+archives:
+  - id: pastebin
+    builds:
+      - pastebin
+      - pb
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+
+dockers:
+  - image_templates:
+      - "ghcr.io/taigrr/pastebin:{{ .Version }}-amd64"
+      - "ghcr.io/taigrr/pastebin:latest-amd64"
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+    ids:
+      - pastebin
+      - pb
+    dockerfile: Dockerfile.goreleaser
+
+  - image_templates:
+      - "ghcr.io/taigrr/pastebin:{{ .Version }}-arm64"
+      - "ghcr.io/taigrr/pastebin:latest-arm64"
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64"
+    ids:
+      - pastebin
+      - pb
+    goarch: arm64
+    dockerfile: Dockerfile.goreleaser
+
+docker_manifests:
+  - name_template: "ghcr.io/taigrr/pastebin:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/taigrr/pastebin:{{ .Version }}-amd64"
+      - "ghcr.io/taigrr/pastebin:{{ .Version }}-arm64"
+
+  - name_template: "ghcr.io/taigrr/pastebin:latest"
+    image_templates:
+      - "ghcr.io/taigrr/pastebin:latest-amd64"
+      - "ghcr.io/taigrr/pastebin:latest-arm64"
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^feat(\(.+\))?!?:'
+    - title: Bug Fixes
+      regexp: '^fix(\(.+\))?!?:'
+    - title: Documentation
+      regexp: '^docs(\(.+\))?!?:'
+    - title: Others
+      order: 999
+
+release:
+  github:
+    owner: taigrr
+    name: pastebin
