@@ -1,9 +1,9 @@
 # pastebin
 
-[![Build Status](https://cloud.drone.io/api/badges/prologic/pastebin/status.svg)](https://cloud.drone.io/prologic/pastebin)
-[![CodeCov](https://codecov.io/gh/prologic/pastebin/branch/master/graph/badge.svg)](https://codecov.io/gh/prologic/pastebin)
-[![Go Report Card](https://goreportcard.com/badge/prologic/pastebin)](https://goreportcard.com/report/prologic/pastebin)
-[![GoDoc](https://godoc.org/github.com/prologic/pastebin?status.svg)](https://godoc.org/github.com/prologic/pastebin)
+[![Build Status](https://cloud.drone.io/api/badges/taigrr/pastebin/status.svg)](https://cloud.drone.io/taigrr/pastebin)
+[![CodeCov](https://codecov.io/gh/taigrr/pastebin/branch/master/graph/badge.svg)](https://codecov.io/gh/taigrr/pastebin)
+[![Go Report Card](https://goreportcard.com/badge/taigrr/pastebin)](https://goreportcard.com/report/taigrr/pastebin)
+[![GoDoc](https://godoc.org/github.com/taigrr/pastebin?status.svg)](https://godoc.org/github.com/taigrr/pastebin)
 
 pastebin is a self-hosted pastebin web app that lets you create and share
 "ephemeral" data between devices and users. There is a configurable expiry
@@ -13,7 +13,7 @@ CLI for interacting with the service in a easy way or you can also use curl!
 ### Source
 
 ```#!bash
-$ go get github.com/prologic/pastebin/...
+$ go get github.com/taigrr/pastebin/...
 ```
 
 ## Usage
