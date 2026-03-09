@@ -43,6 +43,9 @@ const (
 	// maxPasteSize limits the maximum size of a paste body (1 MB).
 	maxPasteSize = 1 << 20
 
+	// maxCollisionRetries is the number of times to retry generating a paste ID on collision.
+	maxCollisionRetries = 3
+
 	// shutdownTimeout is the maximum time to wait for in-flight requests during shutdown.
 	shutdownTimeout = 10 * time.Second
 
@@ -117,7 +120,13 @@ func (s *Server) initRoutes() {
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
 }
 
-func (s *Server) renderTemplate(name string, w http.ResponseWriter, data any) {
+// templateData holds data passed to HTML templates.
+type templateData struct {
+	Blob string
+	UUID string
+}
+
+func (s *Server) renderTemplate(name string, w http.ResponseWriter, data *templateData) {
 	var buf strings.Builder
 	if err := s.templates.ExecuteTemplate(&buf, name, data); err != nil {
 		log.Printf("error executing template %s: %v", name, err)
@@ -140,7 +149,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	contentType := negotiateContentType(r)
 	switch contentType {
 	case contentTypeHTML:
-		s.renderTemplate("base", w, nil)
+		s.renderTemplate("base", w, &templateData{})
 	default:
 		w.Header().Set(headerContentType, contentTypePlain)
 		_, _ = fmt.Fprintln(w, "pastebin service - POST a 'blob' form field to create a paste")
@@ -159,11 +168,15 @@ func (s *Server) handlePaste(w http.ResponseWriter, r *http.Request) {
 	pasteID := RandomString(pasteIDLength)
 
 	// Retry on the extremely unlikely collision.
-	for retries := 0; retries < 3; retries++ {
+	for retries := 0; retries < maxCollisionRetries; retries++ {
 		if _, found := s.store.Get(pasteID); !found {
 			break
 		}
 		pasteID = RandomString(pasteIDLength)
+	}
+	if _, found := s.store.Get(pasteID); found {
+		http.Error(w, "Internal Server Error: ID collision", http.StatusInternalServerError)
+		return
 	}
 	s.store.Set(pasteID, blob, cache.DefaultExpiration)
 
@@ -208,10 +221,7 @@ func (s *Server) handleView(w http.ResponseWriter, r *http.Request) {
 	contentType := negotiateContentType(r)
 	switch contentType {
 	case contentTypeHTML:
-		s.renderTemplate("base", w, struct {
-			Blob string
-			UUID string
-		}{
+		s.renderTemplate("base", w, &templateData{
 			Blob: blob,
 			UUID: pasteID,
 		})

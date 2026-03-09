@@ -23,6 +23,11 @@ func TestRandomStringUniqueness(t *testing.T) {
 	}
 }
 
+func TestRandomStringZeroLength(t *testing.T) {
+	assert.Equal(t, "", RandomString(0))
+	assert.Equal(t, "", RandomString(-1))
+}
+
 func TestRandomStringURLSafe(t *testing.T) {
 	for range 50 {
 		result := RandomString(32)
