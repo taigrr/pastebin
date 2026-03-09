@@ -5,12 +5,12 @@ import (
 	"encoding/base64"
 )
 
-// RandomString generates random bytes and then encodes them using base64
-// which guarantees they are URL-safe. The resultant output is not necessarily
-// a valid base-64 string.
+// RandomString generates a URL-safe random string of the specified length.
+// It reads random bytes and encodes them using base64 URL encoding.
+// The resulting string is truncated to the requested length.
 func RandomString(length int) string {
-	bytes := make([]byte, length*2)
-	rand.Read(bytes)
-	se := base64.StdEncoding.EncodeToString(bytes)
-	return se[0:length]
+	rawBytes := make([]byte, length*2)
+	_, _ = rand.Read(rawBytes)
+	encoded := base64.URLEncoding.EncodeToString(rawBytes)
+	return encoded[:length]
 }

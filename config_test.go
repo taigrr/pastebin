@@ -8,17 +8,19 @@ import (
 )
 
 func TestZeroConfig(t *testing.T) {
-	assert := assert.New(t)
-
 	cfg := Config{}
-	assert.Equal(cfg.expiry, 0*time.Second)
-	assert.Equal(cfg.fqdn, "")
+	assert.Equal(t, time.Duration(0), cfg.Expiry)
+	assert.Equal(t, "", cfg.FQDN)
+	assert.Equal(t, "", cfg.Bind)
 }
 
 func TestConfig(t *testing.T) {
-	assert := assert.New(t)
-
-	cfg := Config{expiry: 30 * time.Minute, fqdn: "https://localhost"}
-	assert.Equal(cfg.expiry, 30*time.Minute)
-	assert.Equal(cfg.fqdn, "https://localhost")
+	cfg := Config{
+		Expiry: 30 * time.Minute,
+		FQDN:   "https://localhost",
+		Bind:   "0.0.0.0:8000",
+	}
+	assert.Equal(t, 30*time.Minute, cfg.Expiry)
+	assert.Equal(t, "https://localhost", cfg.FQDN)
+	assert.Equal(t, "0.0.0.0:8000", cfg.Bind)
 }

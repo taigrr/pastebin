@@ -1,4 +1,4 @@
-{{define "content"}}
+{{define "view_content"}}
 <pre class="code">
   <code>{{.Blob}}</code>
 </pre>
@@ -16,7 +16,7 @@
           </a>
           <ul class="menu">
             <li class="menu-item">
-	      <form action="/delete/{{.UUID}}" method="POST">
+              <form action="/delete/{{.UUID}}" method="POST">
                 <button type="submit">
                   <span href="#dropdowns">
                     <i class="icon icon-delete"></i>

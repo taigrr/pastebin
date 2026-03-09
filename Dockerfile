@@ -1,22 +1,12 @@
 FROM golang:alpine AS builder
 
-EXPOSE 8000/tcp
+RUN apk add --no-cache git
 
-ENTRYPOINT ["pastebin"]
+WORKDIR /src
+COPY . .
 
-RUN \
-    apk add --update git && \
-    rm -rf /var/cache/apk/*
-
-RUN mkdir -p /go/src/pastebin
-WORKDIR /go/src/pastebin
-
-COPY . /go/src/pastebin
-
-RUN go get -v -d
-RUN go get github.com/GeertJohan/go.rice/rice
-RUN GOROOT=/go rice embed-go
-RUN go install -v
+RUN go build -o /pastebin .
+RUN go build -o /pb ./cmd/pb/
 
 
 FROM alpine
@@ -24,6 +14,5 @@ FROM alpine
 EXPOSE 8000/tcp
 ENTRYPOINT ["pastebin"]
 
-COPY --from=builder /go/bin/pastebin /bin/pastebin
-
-
+COPY --from=builder /pastebin /bin/pastebin
+COPY --from=builder /pb /bin/pb

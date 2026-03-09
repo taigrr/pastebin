@@ -1,21 +1,17 @@
-.PHONY: dev build install clean
+.PHONY: build install test clean
 
-all: dev
+all: build
 
-dev: build
-	./pastebin
-
-build: clean
-	go get ./...
-	go build ./cmd/pb/...
-	go build .
+build:
+	go build -o pastebin .
+	go build -o pb ./cmd/pb/
 
 install:
-	go install ./cmd/pb/...
 	go install .
+	go install ./cmd/pb/
 
 test:
 	go test -v -cover -coverprofile=coverage.txt -covermode=atomic -coverpkg=./... -race ./...
 
 clean:
-	git clean -f -d -X
+	rm -f pastebin pb coverage.txt
