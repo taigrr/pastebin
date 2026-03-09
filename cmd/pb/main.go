@@ -1,36 +1,45 @@
 package main
 
 import (
-	"log"
+	"context"
+	"fmt"
 	"os"
 
-	"github.com/prologic/pastebin/client"
-
-	"github.com/namsral/flag"
+	"github.com/charmbracelet/fang"
+	"github.com/spf13/cobra"
+	"github.com/taigrr/pastebin/client"
 )
 
 const (
-	defaultConfig     = "pastebin.conf"
-	defaultUserConfig = "~/.pastebin.conf"
-	defaultURL        = "http://localhost:8000"
+	defaultURL = "http://localhost:8000"
 )
+
+// version is set at build time via ldflags.
+var version = "dev"
 
 func main() {
 	var (
-		url      string
-		insecure bool
+		serviceURL string
+		insecure   bool
 	)
 
-	flag.StringVar(&url, "url", defaultURL, "pastebin service url")
-	flag.BoolVar(&insecure, "insecure", false, "insecure (skip ssl verify)")
+	rootCmd := &cobra.Command{
+		Use:   "pb",
+		Short: "CLI client for the pastebin service",
+		Long:  "pb reads from stdin and submits the content as a paste to the pastebin service.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cli := client.NewClient(serviceURL, insecure)
+			if err := cli.Paste(os.Stdin); err != nil {
+				return fmt.Errorf("posting paste: %w", err)
+			}
+			return nil
+		},
+	}
 
-	flag.Parse()
+	rootCmd.Flags().StringVar(&serviceURL, "url", defaultURL, "pastebin service URL")
+	rootCmd.Flags().BoolVar(&insecure, "insecure", false, "skip TLS certificate verification")
 
-	cli := client.NewClient(url, insecure)
-
-	err := cli.Paste(os.Stdin)
-	if err != nil {
-		log.Printf("error posting paste: %s", err)
+	if err := fang.Execute(context.Background(), rootCmd, fang.WithVersion(version)); err != nil {
 		os.Exit(1)
 	}
 }

@@ -15,7 +15,7 @@
       </section>
       <section class="navbar-section"></section>
     </header>
-    {{template "content" .}}
+    {{if .}}{{template "view_content" .}}{{else}}{{template "index_content"}}{{end}}
   </section>
 </body>
 </html>

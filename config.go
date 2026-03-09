@@ -4,8 +4,9 @@ import (
 	"time"
 )
 
-// Config ...
+// Config holds the server configuration.
 type Config struct {
-	expiry time.Duration
-	fqdn   string
+	Bind   string
+	FQDN   string
+	Expiry time.Duration
 }

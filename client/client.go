@@ -1,59 +1,58 @@
+// Package client provides a programmatic client for the pastebin service.
 package client
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
 const (
-	contentType = "application/x-www-form-urlencoded"
+	formContentType = "application/x-www-form-urlencoded"
+	formFieldBlob   = "blob"
 )
 
-// Client ...
+// Client is a pastebin API client.
 type Client struct {
 	url      string
 	insecure bool
 }
 
-// NewClient ...
-func NewClient(url string, insecure bool) *Client {
-	return &Client{url: url, insecure: insecure}
+// NewClient creates a new pastebin Client.
+// When insecure is true, TLS certificate verification is skipped.
+func NewClient(serviceURL string, insecure bool) *Client {
+	return &Client{url: serviceURL, insecure: insecure}
 }
 
-// Paste ...
+// Paste reads from body and submits it as a new paste.
+// It prints the resulting paste URL to stdout.
 func (c *Client) Paste(body io.Reader) error {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: !c.insecure},
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: c.insecure}, //nolint:gosec // user-requested skip
 	}
-	client := &http.Client{Transport: tr}
+	httpClient := &http.Client{Transport: transport}
 
-	buf := new(strings.Builder)
-	_, err := io.Copy(buf, body)
-	// check errors
+	var builder strings.Builder
+	if _, err := io.Copy(&builder, body); err != nil {
+		return fmt.Errorf("reading input: %w", err)
+	}
+
+	formValues := url.Values{}
+	formValues.Set(formFieldBlob, builder.String())
+
+	resp, err := httpClient.PostForm(c.url, formValues)
 	if err != nil {
-		log.Printf("error reading in file: %s", err)
-		return err
+		return fmt.Errorf("posting paste to %s: %w", c.url, err)
 	}
-	v := url.Values{}
-	v.Set("blob", buf.String())
-	res, err := client.PostForm(c.url, v)
-	if err != nil {
-		log.Printf("error pasting to %s: %s", c.url, err)
-		return err
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusMovedPermanently {
+		return fmt.Errorf("unexpected response from %s: %d", c.url, resp.StatusCode)
 	}
 
-	if res.StatusCode != 200 && res.StatusCode != 301 {
-		log.Printf("unexpected response from %s: %d", c.url, res.StatusCode)
-		return errors.New("unexpected response")
-	}
-
-	fmt.Printf("%s", res.Request.URL.String())
-
+	fmt.Print(resp.Request.URL.String())
 	return nil
 }
